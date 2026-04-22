@@ -1,48 +1,36 @@
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type JobMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-export type UserRecord = {
+export interface JobRecord {
   id: string;
-  email: string;
-  passwordHash: string;
-  notificationEmail: string;
-  defaultFailureWebhookUrl?: string;
-  paid: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type JobRecord = {
-  id: string;
-  userId: string;
   name: string;
-  cronExpression: string;
+  schedule: string;
   timezone: string;
-  webhookUrl: string;
-  method: HttpMethod;
+  targetUrl: string;
+  method: JobMethod;
+  payload: Record<string, unknown>;
   headers: Record<string, string>;
-  body?: string;
-  failureWebhookUrl?: string;
-  timeoutMs: number;
-  maxRetries: number;
   active: boolean;
-  lastRunAt?: string;
+  failureWebhookUrl: string | null;
+  notifyEmail: string | null;
+  webhookToken: string;
+  consecutiveFailures: number;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
   createdAt: string;
   updatedAt: string;
-};
+}
 
 export type ExecutionStatus = "running" | "success" | "failed";
 
-export type ExecutionLogRecord = {
-  id: string;
+export interface ExecutionRecord {
+  id: number;
   jobId: string;
-  userId: string;
-  trigger: "scheduled" | "manual" | "retry";
-  startedAt: string;
-  finishedAt?: string;
-  durationMs?: number;
   status: ExecutionStatus;
-  attempt: number;
-  httpStatus?: number;
-  responseBody?: string;
-  error?: string;
-};
+  triggeredBy: "scheduler" | "manual" | "webhook";
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  responseStatus: number | null;
+  responseBody: string | null;
+  errorMessage: string | null;
+}

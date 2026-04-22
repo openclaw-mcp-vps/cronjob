@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import "./globals.css";
 
-import "@/app/globals.css";
-
-const displayFont = Space_Grotesk({
+const headingFont = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-display"
+  variable: "--font-heading"
 });
 
 const monoFont = IBM_Plex_Mono({
@@ -17,21 +15,29 @@ const monoFont = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://cronjob.run"),
-  title: "cronjob | Reliable Cloud Cron Jobs",
+  title: "cronjob | Reliable scheduled tasks in the cloud",
   description:
-    "Run scheduled jobs in the cloud with webhook retries, failure alerts, and execution logs. Stop debugging silent cron failures.",
+    "Run recurring jobs with confidence. Cronjob gives you cloud scheduling, execution logs, and failure alerts without managing servers.",
+  keywords: [
+    "cron jobs",
+    "job scheduler",
+    "cloud cron",
+    "task automation",
+    "failure notifications"
+  ],
   openGraph: {
-    title: "cronjob | Reliable Cloud Cron Jobs",
+    title: "cronjob | Reliable scheduled tasks in the cloud",
     description:
-      "Set recurring jobs with a simple API, monitor every run, and get notified instantly when a task fails.",
+      "Set up recurring jobs via dashboard or API, monitor execution logs in real time, and get notified before failed tasks hurt your product.",
     url: "https://cronjob.run",
     siteName: "cronjob",
     type: "website"
   },
   twitter: {
     card: "summary_large_image",
-    title: "cronjob",
-    description: "Cloud cron jobs with logs, retries, and failure alerts for SaaS teams."
+    title: "cronjob | Reliable scheduled tasks in the cloud",
+    description:
+      "A dependable cron job service for solo developers and small SaaS teams."
   },
   robots: {
     index: true,
@@ -39,10 +45,14 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${displayFont.variable} ${monoFont.variable} font-[var(--font-display)] text-[#e6edf3]`}>{children}</body>
+    <html lang="en" className={`${headingFont.variable} ${monoFont.variable}`}>
+      <body className="min-h-screen bg-[#0d1117] text-slate-100 antialiased">
+        {children}
+      </body>
     </html>
   );
 }

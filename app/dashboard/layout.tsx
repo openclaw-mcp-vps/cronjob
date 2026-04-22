@@ -1,45 +1,48 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
+import { getAccessEmailFromCookies, requireDashboardAccess } from "@/lib/auth";
 
-import { SignOutButton } from "@/components/SignOutButton";
-import { Badge } from "@/components/ui/badge";
-import { requireUser } from "@/lib/auth";
-
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireUser();
+export default async function DashboardLayout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
+  await requireDashboardAccess();
+  const email = await getAccessEmailFromCookies();
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-[#21262d] bg-[#0d1117]/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-5">
-            <Link href="/dashboard" className="text-lg font-semibold text-[#f0f6fc]">
-              cronjob
-            </Link>
-            <nav className="flex items-center gap-2 text-sm">
-              <Link href="/dashboard" className="rounded px-2 py-1 text-[#8b949e] hover:bg-[#161b22] hover:text-[#e6edf3]">
-                Overview
-              </Link>
-              <Link
-                href="/dashboard/jobs"
-                className="rounded px-2 py-1 text-[#8b949e] hover:bg-[#161b22] hover:text-[#e6edf3]"
-              >
-                Jobs
-              </Link>
-              <Link
-                href="/dashboard/logs"
-                className="rounded px-2 py-1 text-[#8b949e] hover:bg-[#161b22] hover:text-[#e6edf3]"
-              >
-                Logs
-              </Link>
-            </nav>
+    <main className="mx-auto min-h-screen w-full max-w-6xl px-6 py-8 sm:px-10">
+      <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/50 px-5 py-4 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-300">cronjob dashboard</p>
+            <h1 className="font-[var(--font-heading)] text-2xl font-bold text-white">Reliable task scheduling control center</h1>
+            <p className="mt-1 text-sm text-slate-400">Signed in as {email ?? "unknown"}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge className="text-[#8b949e]">{session.user.email}</Badge>
-            <SignOutButton />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500"
+            >
+              Overview
+            </Link>
+            <Link
+              href="/dashboard/jobs"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500"
+            >
+              Jobs
+            </Link>
+            <Link
+              href="/dashboard/logs"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500"
+            >
+              Logs
+            </Link>
+            <LogoutButton />
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
-    </div>
+      {children}
+    </main>
   );
 }

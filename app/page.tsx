@@ -1,162 +1,176 @@
 import Link from "next/link";
-
-import { CheckoutButton } from "@/components/CheckoutButton";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAuthSession } from "@/lib/auth";
+import { AlertTriangle, BellRing, Clock3, CloudCog, DatabaseBackup, Logs } from "lucide-react";
 
 const faqs = [
   {
-    question: "How does cronjob prevent silent failures?",
+    question: "How is this better than running cron on my VPS?",
     answer:
-      "Every execution is logged with HTTP status, response payload, and duration. Failed runs automatically trigger email or webhook notifications so your team finds out immediately."
+      "Cronjob separates scheduling from execution and keeps a full audit trail for every run. If a server restarts, your schedule and logs stay intact in PostgreSQL and your jobs are retried by workers."
   },
   {
-    question: "Can I run private API jobs?",
+    question: "Can I trigger jobs from my own app?",
     answer:
-      "Yes. Add custom headers per job, including bearer tokens or signed keys. Requests are sent over HTTPS with configurable timeouts and retries."
+      "Yes. Every job has a webhook token and endpoint so your app can trigger runs on demand in addition to the recurring schedule."
   },
   {
-    question: "Do I need Redis to use this app?",
+    question: "What happens when a task fails?",
     answer:
-      "No. cronjob works without Redis using direct execution mode. If you connect Redis, Bull queueing adds retries and better worker resilience."
+      "Cronjob records the full error, response payload, duration, and attempt history. You can send failure alerts by email and webhook so your team is informed immediately."
   },
   {
     question: "Who is this built for?",
     answer:
-      "Solo developers and small SaaS teams that need reliable scheduling without managing cron daemons, worker nodes, or monitoring systems."
+      "Solo founders and lean product teams that need reliable recurring jobs for backups, billing syncs, report generation, and lifecycle automations without hiring DevOps."
   }
 ];
 
-export default async function HomePage() {
-  const session = await getAuthSession();
-
+export default function HomePage() {
   return (
-    <main className="min-h-screen bg-transparent">
-      <section className="mx-auto flex w-full max-w-6xl flex-col px-6 pb-20 pt-10 md:px-10 md:pt-14">
-        <header className="mb-12 flex items-center justify-between">
-          <div>
-            <p className="font-[var(--font-mono)] text-xs uppercase tracking-[0.2em] text-[#8b949e]">Scheduling Infrastructure</p>
-            <h1 className="text-2xl font-bold text-[#e6edf3]">cronjob</h1>
-          </div>
-          <div className="flex gap-3">
-            {session ? (
-              <Link href="/dashboard">
-                <Button variant="secondary">Dashboard</Button>
-              </Link>
-            ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="ghost">Log in</Button>
-                </Link>
-                <Link href="/register">
-                  <Button>Create account</Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </header>
+    <main className="mx-auto flex w-full max-w-6xl flex-col px-6 py-8 sm:px-10 lg:px-12">
+      <header className="mb-20 flex items-center justify-between border-b border-slate-800 pb-6">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-slate-400">cronjob</p>
+          <h1 className="font-[var(--font-heading)] text-xl font-bold text-white">Cloud Cron That Does Not Flake</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="rounded-full border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500"
+          >
+            Open Dashboard
+          </Link>
+          <a
+            href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK as string}
+            className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+          >
+            Start for $15/mo
+          </a>
+        </div>
+      </header>
 
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-          <div className="space-y-8">
-            <p className="inline-flex rounded-full border border-[#30363d] bg-[#161b22]/70 px-4 py-2 font-[var(--font-mono)] text-xs uppercase tracking-[0.12em] text-[#8b949e]">
-              Reliable cloud cron jobs for SaaS products
-            </p>
-            <div className="space-y-5">
-              <h2 className="max-w-3xl text-4xl font-bold leading-tight text-[#f0f6fc] md:text-6xl">
-                Stop learning about failed jobs from angry customers.
-              </h2>
-              <p className="max-w-2xl text-lg text-[#8b949e]">
-                cronjob runs your scheduled tasks in the cloud, retries transient failures, and captures full execution logs so critical automations stay on track.
-              </p>
-            </div>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <CheckoutButton email={session?.user?.email ?? undefined} />
-              <Link href={session ? "/dashboard" : "/register"}>
-                <Button size="lg" variant="secondary">
-                  {session ? "Open dashboard" : "Create free account"}
-                </Button>
-              </Link>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Retry Engine</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-[#8b949e]">Exponential retry support to recover from temporary endpoint outages.</CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Alerting</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-[#8b949e]">Email and webhook notifications the moment a run fails.</CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Execution Logs</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-[#8b949e]">Inspect duration, status, and payload output for every invocation.</CardContent>
-              </Card>
-            </div>
+      <section className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+        <div>
+          <p className="mb-4 inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 font-mono text-xs uppercase tracking-[0.22em] text-emerald-300">
+            Reliable Scheduling for SaaS Teams
+          </p>
+          <h2 className="font-[var(--font-heading)] text-4xl leading-tight font-extrabold text-white sm:text-5xl">
+            Never discover a broken cron job
+            <span className="text-emerald-400"> after your customers do.</span>
+          </h2>
+          <p className="mt-6 max-w-2xl text-lg text-slate-300">
+            Cronjob runs recurring tasks in the cloud with durable queues, retries, logs, and alerts. Ship backup
+            jobs, reporting tasks, and billing syncs with a scheduler that tells you exactly what happened.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <a
+              href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK as string}
+              className="rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-400"
+            >
+              Buy Access - $15/mo
+            </a>
+            <Link
+              href="/paywall"
+              className="rounded-xl border border-slate-700 px-6 py-3 font-medium text-slate-200 transition hover:border-slate-500"
+            >
+              I Already Purchased
+            </Link>
           </div>
+        </div>
 
-          <Card className="border-[#2f81f7]/40 bg-[#0f1726]/75 shadow-[0_0_120px_-70px_rgba(47,129,247,0.9)]">
-            <CardHeader>
-              <CardTitle>Why teams switch</CardTitle>
-              <CardDescription>Running cron on random hosts causes invisible outages and expensive cleanup.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[#c9d1d9]">
-              <p>
-                Missed backups, stale analytics, and delayed billing runs usually come from jobs failing silently on servers nobody monitors. cronjob removes that operational blind spot.
-              </p>
-              <p>
-                Set each task once, route to your existing webhook handlers, and watch every run from a dedicated dashboard with clear status history.
-              </p>
-              <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-4">
-                <p className="font-[var(--font-mono)] text-xs uppercase tracking-[0.12em] text-[#8b949e]">Price</p>
-                <p className="mt-1 text-2xl font-semibold text-[#f0f6fc]">$15/month</p>
-                <p className="mt-2 text-sm text-[#8b949e]">Unlimited jobs, dashboard access, and failure notifications.</p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-slate-400">At a glance</p>
+          <ul className="mt-5 space-y-4 text-sm text-slate-200">
+            <li className="flex items-start gap-3">
+              <Clock3 className="mt-0.5 h-4 w-4 text-emerald-400" />
+              Recurring schedules with cron syntax and next-run visibility.
+            </li>
+            <li className="flex items-start gap-3">
+              <Logs className="mt-0.5 h-4 w-4 text-cyan-300" />
+              Execution logs with status, duration, response code, and payload snapshots.
+            </li>
+            <li className="flex items-start gap-3">
+              <BellRing className="mt-0.5 h-4 w-4 text-amber-300" />
+              Failure alerts via email and webhook before incidents become outages.
+            </li>
+            <li className="flex items-start gap-3">
+              <CloudCog className="mt-0.5 h-4 w-4 text-violet-300" />
+              Background workers and Redis queues without maintaining your own cron servers.
+            </li>
+          </ul>
         </div>
       </section>
 
-      <section className="border-y border-[#21262d] bg-[#0f141d]/80">
-        <div className="mx-auto grid max-w-6xl gap-6 px-6 py-16 md:grid-cols-3 md:px-10">
+      <section className="mt-24 grid gap-6 sm:grid-cols-2">
+        <article className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-6">
+          <h3 className="font-[var(--font-heading)] text-2xl font-bold text-rose-100">The painful reality</h3>
+          <ul className="mt-4 space-y-3 text-slate-200">
+            <li className="flex gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-rose-300" />
+              Jobs fail silently when a server restarts or an environment variable rotates.
+            </li>
+            <li className="flex gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-rose-300" />
+              You find out hours later, after backups, emails, or billing syncs already missed.
+            </li>
+            <li className="flex gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-rose-300" />
+              Debugging is guesswork without execution history or failure payloads.
+            </li>
+          </ul>
+        </article>
+
+        <article className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+          <h3 className="font-[var(--font-heading)] text-2xl font-bold text-emerald-100">The cronjob way</h3>
+          <ul className="mt-4 space-y-3 text-slate-100">
+            <li className="flex gap-3">
+              <DatabaseBackup className="h-5 w-5 shrink-0 text-emerald-300" />
+              Persist schedules and run history in PostgreSQL for durable auditing.
+            </li>
+            <li className="flex gap-3">
+              <CloudCog className="h-5 w-5 shrink-0 text-emerald-300" />
+              Queue execution through BullMQ workers for retries and controlled concurrency.
+            </li>
+            <li className="flex gap-3">
+              <BellRing className="h-5 w-5 shrink-0 text-emerald-300" />
+              Push alerts instantly to your incident webhook and inbox when runs fail.
+            </li>
+          </ul>
+        </article>
+      </section>
+
+      <section id="pricing" className="mt-24 rounded-3xl border border-slate-800 bg-slate-900/60 p-8 sm:p-10">
+        <p className="font-mono text-xs uppercase tracking-[0.22em] text-emerald-300">Pricing</p>
+        <h3 className="mt-3 font-[var(--font-heading)] text-3xl font-bold text-white">Simple price for essential reliability</h3>
+        <p className="mt-3 max-w-2xl text-slate-300">
+          Built for bootstrapped teams that need dependable automation now, not enterprise procurement cycles.
+        </p>
+        <div className="mt-8 flex flex-col gap-6 rounded-2xl border border-slate-800 bg-[#0c1420] p-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="text-2xl font-semibold">Problem</h3>
-            <p className="mt-3 text-[#8b949e]">
-              Developers lose hours diagnosing cron jobs that quietly stopped running because a cheap server rebooted or environment variables drifted.
-            </p>
+            <p className="text-4xl font-black text-white">$15<span className="text-xl font-medium text-slate-400">/month</span></p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-300">
+              <li>Unlimited scheduled jobs</li>
+              <li>Failure alerts by email + webhook</li>
+              <li>Execution logs and response tracing</li>
+              <li>Dashboard + REST API access</li>
+            </ul>
           </div>
-          <div>
-            <h3 className="text-2xl font-semibold">Solution</h3>
-            <p className="mt-3 text-[#8b949e]">
-              cronjob centralizes scheduling, retries, and logs in one control plane. Every run is visible, auditable, and recoverable.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-2xl font-semibold">Who Pays</h3>
-            <p className="mt-3 text-[#8b949e]">
-              Bootstrapped startups and solo builders who need production-grade scheduling without hiring dedicated DevOps.
-            </p>
-          </div>
+          <a
+            href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK as string}
+            className="rounded-xl bg-emerald-500 px-6 py-3 text-center font-semibold text-slate-950 transition hover:bg-emerald-400"
+          >
+            Go to Secure Stripe Checkout
+          </a>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16 md:px-10">
-        <h3 className="text-3xl font-semibold text-[#f0f6fc]">Frequently Asked Questions</h3>
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
+      <section className="mt-24">
+        <h3 className="font-[var(--font-heading)] text-3xl font-bold text-white">Frequently asked questions</h3>
+        <div className="mt-6 grid gap-4">
           {faqs.map((faq) => (
-            <Card key={faq.question}>
-              <CardHeader>
-                <CardTitle className="text-base">{faq.question}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-[#8b949e]">{faq.answer}</p>
-              </CardContent>
-            </Card>
+            <article key={faq.question} className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+              <h4 className="text-lg font-semibold text-white">{faq.question}</h4>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">{faq.answer}</p>
+            </article>
           ))}
         </div>
       </section>

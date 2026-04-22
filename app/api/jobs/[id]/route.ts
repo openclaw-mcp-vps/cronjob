@@ -1,103 +1,89 @@
-import cron from "node-cron";
-import { NextResponse } from "next/server";
-import { z } from "zod";
+import { NextResponse, type NextRequest } from "next/server";
+import { ZodError } from "zod";
+import { assertApiAccess } from "@/lib/auth";
+import { ensureSchema } from "@/lib/db";
+import { deleteJob, fetchExecutionsForJob, fetchJobById, updateJob, updateJobSchema } from "@/lib/jobs";
 
-import { getAuthSession } from "@/lib/auth";
-import { deleteJob, ensureDataFiles, getJobById, updateJob } from "@/lib/db";
-
-export const runtime = "nodejs";
-
-const updateSchema = z
-  .object({
-    name: z.string().min(3).max(80).optional(),
-    cronExpression: z.string().min(9).max(120).optional(),
-    timezone: z.string().min(2).max(64).optional(),
-    webhookUrl: z.string().url().optional(),
-    method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).optional(),
-    headers: z.record(z.string()).optional(),
-    body: z.string().max(10_000).optional(),
-    failureWebhookUrl: z.string().url().optional(),
-    timeoutMs: z.number().int().min(1000).max(60_000).optional(),
-    maxRetries: z.number().int().min(0).max(5).optional(),
-    active: z.boolean().optional()
-  })
-  .strict();
-
-async function authorize(id: string) {
-  const session = await getAuthSession();
-
-  if (!session?.user?.id) {
-    return { error: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
-  }
-
-  if (!session.user.paid) {
-    return { error: NextResponse.json({ message: "Subscription required" }, { status: 402 }) };
-  }
-
-  const job = await getJobById(id);
-
-  if (!job || job.userId !== session.user.id) {
-    return { error: NextResponse.json({ message: "Job not found" }, { status: 404 }) };
-  }
-
-  return { session, job };
+interface Context {
+  params: Promise<{
+    id: string;
+  }>;
 }
 
-type Params = { params: Promise<{ id: string }> };
-
-export async function GET(_: Request, { params }: Params) {
-  await ensureDataFiles();
-  const { id } = await params;
-  const result = await authorize(id);
-
-  if (result.error) {
-    return result.error;
+export async function GET(request: NextRequest, context: Context) {
+  const authError = assertApiAccess(request);
+  if (authError) {
+    return authError;
   }
 
-  return NextResponse.json({ job: result.job });
+  const { id } = await context.params;
+
+  await ensureSchema();
+
+  const job = await fetchJobById(id);
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  const executions = await fetchExecutionsForJob(id, 25);
+
+  return NextResponse.json({ job, executions });
 }
 
-export async function PUT(request: Request, { params }: Params) {
-  await ensureDataFiles();
-  const { id } = await params;
-  const result = await authorize(id);
-
-  if (result.error) {
-    return result.error;
+export async function PATCH(request: NextRequest, context: Context) {
+  const authError = assertApiAccess(request);
+  if (authError) {
+    return authError;
   }
 
-  const payload = await request.json();
-  const parsed = updateSchema.safeParse(payload);
+  try {
+    const { id } = await context.params;
 
-  if (!parsed.success) {
+    await ensureSchema();
+
+    const body = await request.json();
+    const parsed = updateJobSchema.parse(body);
+    const job = await updateJob(id, parsed);
+
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ job });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.flatten()
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       {
-        message: "Invalid job payload.",
-        issues: parsed.error.flatten()
+        error: error instanceof Error ? error.message : "Could not update job"
       },
-      { status: 400 }
+      { status: 500 }
     );
   }
-
-  if (parsed.data.cronExpression && !cron.validate(parsed.data.cronExpression)) {
-    return NextResponse.json({ message: "Invalid cron expression." }, { status: 400 });
-  }
-
-  const updated = await updateJob(id, parsed.data);
-
-  return NextResponse.json({ job: updated });
 }
 
-export async function DELETE(_: Request, { params }: Params) {
-  await ensureDataFiles();
-  const { id } = await params;
-  const result = await authorize(id);
-
-  if (result.error) {
-    return result.error;
+export async function DELETE(request: NextRequest, context: Context) {
+  const authError = assertApiAccess(request);
+  if (authError) {
+    return authError;
   }
 
-  await deleteJob(id);
+  const { id } = await context.params;
 
-  return NextResponse.json({ deleted: true });
+  await ensureSchema();
+  const deleted = await deleteJob(id);
+
+  if (!deleted) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

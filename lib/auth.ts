@@ -1,99 +1,123 @@
+import crypto from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getServerSession, type NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { z } from "zod";
+import { type NextRequest, NextResponse } from "next/server";
 
-import { ensureDataFiles, findUserById, verifyUserPassword } from "@/lib/db";
+export const ACCESS_COOKIE_NAME = "cronjob_access";
+const ACCESS_TTL_SECONDS = 60 * 60 * 24 * 30;
 
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8)
-});
+interface AccessTokenPayload {
+  email: string;
+  exp: number;
+}
 
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt"
-  },
-  pages: {
-    signIn: "/login"
-  },
-  providers: [
-    CredentialsProvider({
-      name: "Email and Password",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+function getAccessSigningSecret(): string {
+  return process.env.STRIPE_WEBHOOK_SECRET || "local-dev-signing-secret-change-me";
+}
+
+function sign(value: string): string {
+  return crypto.createHmac("sha256", getAccessSigningSecret()).update(value).digest("base64url");
+}
+
+export function createAccessToken(email: string): string {
+  const payload: AccessTokenPayload = {
+    email,
+    exp: Math.floor(Date.now() / 1000) + ACCESS_TTL_SECONDS
+  };
+
+  const serializedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = sign(serializedPayload);
+
+  return `${serializedPayload}.${signature}`;
+}
+
+export function verifyAccessToken(token: string | null | undefined): AccessTokenPayload | null {
+  if (!token) {
+    return null;
+  }
+
+  const [serializedPayload, signature] = token.split(".");
+  if (!serializedPayload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = sign(serializedPayload);
+  if (signature.length !== expectedSignature.length) {
+    return null;
+  }
+
+  const signaturesMatch = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+
+  if (!signaturesMatch) {
+    return null;
+  }
+
+  let payload: AccessTokenPayload;
+  try {
+    payload = JSON.parse(Buffer.from(serializedPayload, "base64url").toString("utf8")) as AccessTokenPayload;
+  } catch {
+    return null;
+  }
+
+  if (payload.exp <= Math.floor(Date.now() / 1000)) {
+    return null;
+  }
+
+  return payload;
+}
+
+export function setAccessCookie(response: NextResponse, email: string): void {
+  response.cookies.set({
+    name: ACCESS_COOKIE_NAME,
+    value: createAccessToken(email),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ACCESS_TTL_SECONDS
+  });
+}
+
+export function clearAccessCookie(response: NextResponse): void {
+  response.cookies.set({
+    name: ACCESS_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0
+  });
+}
+
+export function assertApiAccess(request: NextRequest): NextResponse | null {
+  const token = request.cookies.get(ACCESS_COOKIE_NAME)?.value;
+  const payload = verifyAccessToken(token);
+
+  if (!payload) {
+    return NextResponse.json(
+      {
+        error: "Payment required. Buy access, then claim your dashboard with your billing email."
       },
-      async authorize(credentials) {
-        await ensureDataFiles();
-        const parsed = credentialsSchema.safeParse(credentials);
-
-        if (!parsed.success) {
-          return null;
-        }
-
-        const user = await verifyUserPassword(parsed.data.email, parsed.data.password);
-
-        if (!user) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          paid: user.paid
-        };
-      }
-    })
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.paid = user.paid;
-      }
-
-      if (token.id) {
-        const latest = await findUserById(token.id);
-        token.paid = latest?.paid ?? false;
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id ?? "";
-        session.user.paid = Boolean(token.paid);
-      }
-
-      return session;
-    }
-  }
-};
-
-export async function getAuthSession() {
-  return getServerSession(authOptions);
-}
-
-export async function requireUser() {
-  const session = await getAuthSession();
-
-  if (!session?.user?.id) {
-    redirect("/login");
+      { status: 402 }
+    );
   }
 
-  return session;
+  return null;
 }
 
-export async function requirePaidUser() {
-  const session = await requireUser();
+export async function getAccessEmailFromCookies(): Promise<string | null> {
   const cookieStore = await cookies();
-  const paidCookie = cookieStore.get("cronjob_paid")?.value;
+  const token = cookieStore.get(ACCESS_COOKIE_NAME)?.value;
+  const payload = verifyAccessToken(token);
 
-  if (paidCookie !== "1") {
-    redirect("/upgrade");
+  return payload?.email ?? null;
+}
+
+export async function requireDashboardAccess(): Promise<void> {
+  const email = await getAccessEmailFromCookies();
+
+  if (!email) {
+    redirect("/paywall");
   }
-
-  return session;
 }

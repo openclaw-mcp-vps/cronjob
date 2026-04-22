@@ -1,24 +1,16 @@
-import { JobForm } from "@/components/JobForm";
-import { JobList } from "@/components/JobList";
-import { requirePaidUser } from "@/lib/auth";
-import { ensureDataFiles, listJobsByUser } from "@/lib/db";
+"use client";
 
-export default async function DashboardJobsPage() {
-  const session = await requirePaidUser();
-  await ensureDataFiles();
+import { useState } from "react";
+import { JobForm } from "@/components/job-form";
+import { JobList } from "@/components/job-list";
 
-  const jobs = await listJobsByUser(session.user.id);
+export default function DashboardJobsPage() {
+  const [refreshKey, setRefreshKey] = useState(0);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#f0f6fc]">Jobs</h1>
-        <p className="mt-2 text-[#8b949e]">
-          Add recurring tasks, control retry behavior, and pause jobs without touching server infrastructure.
-        </p>
-      </div>
-      <JobForm />
-      <JobList initialJobs={jobs} />
-    </div>
+    <section className="space-y-6">
+      <JobForm onJobCreated={() => setRefreshKey((previous) => previous + 1)} />
+      <JobList refreshKey={refreshKey} />
+    </section>
   );
 }
